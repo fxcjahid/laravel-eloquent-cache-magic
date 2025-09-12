@@ -1,0 +1,80 @@
+{
+    "name": "fxcjahid/laravel-eloquent-cache-magic",
+    "description": "A powerful Laravel package for automatic Eloquent query caching with Redis/Memcached tag support, automatic invalidation, and advanced monitoring",
+    "keywords": [
+        "laravel",
+        "cache",
+        "eloquent",
+        "redis",
+        "memcached",
+        "query-builder",
+        "performance",
+        "optimization",
+        "tags",
+        "invalidation"
+    ],
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "FXC Jahid",
+            "email": "fxcjahid3@gmail.com",
+            "homepage": "https://github.com/fxcjahid"
+        }
+    ],
+    "homepage": "https://github.com/fxcjahid/laravel-eloquent-cache-magic",
+    "require": {
+        "php": "^8.0|^8.1|^8.2|^8.3",
+        "illuminate/support": "^9.0|^10.0|^11.0",
+        "illuminate/database": "^9.0|^10.0|^11.0",
+        "illuminate/cache": "^9.0|^10.0|^11.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^7.0|^8.0|^9.0",
+        "phpunit/phpunit": "^9.5|^10.0|^11.0",
+        "pestphp/pest": "^2.0",
+        "pestphp/pest-plugin-laravel": "^2.0",
+        "predis/predis": "^2.0",
+        "mockery/mockery": "^1.5"
+    },
+    "suggest": {
+        "predis/predis": "Required for Redis cache driver with tag support (^2.0)",
+        "ext-memcached": "Required for Memcached cache driver with tag support"
+    },
+    "autoload": {
+        "psr-4": {
+            "Fxcjahid\\LaravelEloquentCacheMagic\\": "src/"
+        },
+        "files": [
+            "src/helpers.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Fxcjahid\\LaravelEloquentCacheMagic\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Fxcjahid\\LaravelEloquentCacheMagic\\CacheMagicServiceProvider"
+            ],
+            "aliases": {
+                "CacheMagic": "Fxcjahid\\LaravelEloquentCacheMagic\\Facades\\CacheMagic"
+            }
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/pest",
+        "test-coverage": "vendor/bin/pest --coverage",
+        "format": "vendor/bin/php-cs-fixer fix"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
