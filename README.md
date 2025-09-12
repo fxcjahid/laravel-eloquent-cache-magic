@@ -47,10 +47,17 @@ composer require predis/predis
 ```
 
 ```env
-CACHE_DRIVER=redis
+CACHE_DRIVER=predis
 REDIS_HOST=127.0.0.1
 REDIS_PASSWORD=null
 REDIS_PORT=6379
+```
+
+#### Also update config\database.php
+```php
+'redis' => [
+    'client' => env('REDIS_CLIENT', 'predis'),
+]
 ```
 
 ## 🚀 Quick Start
@@ -196,5 +203,6 @@ This package is open-sourced software licensed under the [MIT license](LICENSE).
 - Email: fxcjahid3@gmail.com
 
 ## 🌟 Support
+
 
 If you find this package helpful, please give it a ⭐ on [GitHub](https://github.com/fxcjahid/laravel-eloquent-cache-magic)!
