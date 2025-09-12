@@ -3,7 +3,7 @@
 [![Latest Version](https://img.shields.io/github/v/release/fxcjahid/laravel-eloquent-cache-magic)](https://github.com/fxcjahid/laravel-eloquent-cache-magic/releases)
 [![License](https://img.shields.io/github/license/fxcjahid/laravel-eloquent-cache-magic)](https://github.com/fxcjahid/laravel-eloquent-cache-magic/blob/main/LICENSE)
 [![PHP Version](https://img.shields.io/packagist/php-v/fxcjahid/laravel-eloquent-cache-magic)](https://packagist.org/packages/fxcjahid/laravel-eloquent-cache-magic)
-[![Laravel Version](https://img.shields.io/badge/Laravel-9.x%20|%2010.x%20|%2011.x-orange)](https://laravel.com)
+[![Laravel Version](https://img.shields.io/badge/Laravel-10.x%20|%2011.x%20|%2012.x-orange)](https://laravel.com)
 
 A powerful Laravel package that adds automatic and intelligent caching to your Eloquent queries with zero effort. Features include automatic cache invalidation, Redis/Memcached tag support, cache statistics, and much more!
 
@@ -21,11 +21,13 @@ A powerful Laravel package that adds automatic and intelligent caching to your E
 - 🧪 **Fully Tested** - Comprehensive test coverage with PHPUnit and Pest
 - 📈 **Performance Monitoring** - Track and optimize cache performance
 - ⚡ **Async Cache Refresh** - Refresh cache in background jobs
+- 👤 **Auto User/Guest Tags** - Automatic user-specific cache isolation
+- 🚫 **doNotCache() Method** - Disable caching for specific queries (DataTables compatible)
 
 ## 📋 Requirements
 
-- PHP 8.0+
-- Laravel 9.0+ / 10.0+ / 11.0+
+- PHP 8.0 / 8.1 / 8.2 / 8.3 / 8.4
+- Laravel 10.0 / 11.0 / 12.0
 - Redis or Memcached (optional, for tag support)
 
 ## 📦 Installation

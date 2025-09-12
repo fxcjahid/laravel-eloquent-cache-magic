@@ -24,10 +24,10 @@
     ],
     "homepage": "https://github.com/fxcjahid/laravel-eloquent-cache-magic",
     "require": {
-        "php": "^8.0|^8.1|^8.2|^8.3",
-        "illuminate/support": "^9.0|^10.0|^11.0",
-        "illuminate/database": "^9.0|^10.0|^11.0",
-        "illuminate/cache": "^9.0|^10.0|^11.0",
+        "php": "^8.0|^8.1|^8.2|^8.3|^8.4",
+        "illuminate/support": "^10.0|^11.0|^12.0",
+        "illuminate/database": "^10.0|^11.0|^12.0",
+        "illuminate/cache": "^10.0|^11.0|^12.0",
         "predis/predis": "^2.0"
     },
     "require-dev": {

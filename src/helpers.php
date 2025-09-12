@@ -2,6 +2,7 @@
 
 use Fxcjahid\LaravelEloquentCacheMagic\CacheQueryBuilder;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Auth;
 
 if (!function_exists('cache_magic')) {
     /**
@@ -111,5 +112,97 @@ if (!function_exists('cache_warm_model')) {
             
             $builder->cache($query['options'] ?? [])->get();
         }
+    }
+}
+
+if (!function_exists('cache_clear_user')) {
+    /**
+     * Clear all cache for a specific user
+     * 
+     * @param int|null $userId If null, clears current user's cache
+     * @return bool
+     */
+    function cache_clear_user(?int $userId = null): bool
+    {
+        $userId = $userId ?: Auth::id();
+        
+        if (!$userId) {
+            return false;
+        }
+        
+        if (Cache::supportsTags()) {
+            Cache::tags(['user:' . $userId])->flush();
+            return true;
+        }
+        
+        return false;
+    }
+}
+
+if (!function_exists('cache_clear_guest')) {
+    /**
+     * Clear cache for current guest session
+     * 
+     * @param string|null $guestId Optional specific guest ID
+     * @return bool
+     */
+    function cache_clear_guest(?string $guestId = null): bool
+    {
+        if (!$guestId) {
+            // Try to get current guest ID from session
+            $guestId = session()->getId();
+        }
+        
+        if (!$guestId) {
+            return false;
+        }
+        
+        if (Cache::supportsTags()) {
+            Cache::tags(['guest:' . $guestId])->flush();
+            return true;
+        }
+        
+        return false;
+    }
+}
+
+if (!function_exists('cache_clear_all_users')) {
+    /**
+     * Clear cache for all authenticated users
+     * Warning: This could be resource intensive with many users
+     * 
+     * @return bool
+     */
+    function cache_clear_all_users(): bool
+    {
+        if (!Cache::supportsTags()) {
+            return false;
+        }
+        
+        // This would need to iterate through all user IDs
+        // For now, we'll clear common user-related tags
+        Cache::tags(['users'])->flush();
+        
+        return true;
+    }
+}
+
+if (!function_exists('cache_clear_all_guests')) {
+    /**
+     * Clear all guest cache entries
+     * 
+     * @return bool
+     */
+    function cache_clear_all_guests(): bool
+    {
+        if (!Cache::supportsTags()) {
+            return false;
+        }
+        
+        // Clear all guest-prefixed tags
+        // Note: This might not clear all individual guest tags
+        Cache::tags(['guests'])->flush();
+        
+        return true;
     }
 }

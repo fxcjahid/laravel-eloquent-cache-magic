@@ -250,4 +250,23 @@ return [
     'custom_drivers' => [
         // 'my-driver' => \App\Cache\MyCustomDriver::class,
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Auto User Tags
+    |--------------------------------------------------------------------------
+    |
+    | Automatically add user or guest tags to all cache entries
+    |
+    */
+    'auto_user_tags' => [
+        'enabled' => env('CACHE_MAGIC_AUTO_USER_TAGS', true),
+        
+        // Fallback strategy for guests
+        // Options: 'session', 'ip', 'unique'
+        // - 'session': Use session ID (requires session)
+        // - 'ip': Use hashed IP address (be careful with privacy)
+        // - 'unique': Always generate unique ID (no cache sharing)
+        'guest_fallback' => 'session',
+    ],
 ];

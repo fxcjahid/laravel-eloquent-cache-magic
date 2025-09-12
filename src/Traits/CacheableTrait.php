@@ -46,16 +46,21 @@ trait CacheableTrait
             });
         }
 
-        if ($events['restored'] ?? true) {
-            static::restored(function ($model) {
-                $model->invalidateModelCache('restored');
-            });
-        }
+        // Only register SoftDeletes events if the model uses SoftDeletes trait
+        $usesSoftDeletes = in_array('Illuminate\Database\Eloquent\SoftDeletes', class_uses_recursive(static::class));
+        
+        if ($usesSoftDeletes) {
+            if ($events['restored'] ?? true) {
+                static::restored(function ($model) {
+                    $model->invalidateModelCache('restored');
+                });
+            }
 
-        if ($events['forceDeleted'] ?? true) {
-            static::forceDeleted(function ($model) {
-                $model->invalidateModelCache('forceDeleted');
-            });
+            if ($events['forceDeleted'] ?? true) {
+                static::forceDeleted(function ($model) {
+                    $model->invalidateModelCache('forceDeleted');
+                });
+            }
         }
     }
 
@@ -158,6 +163,23 @@ trait CacheableTrait
                 'tags' => $tags,
             ]);
         }
+    }
+
+    /**
+     * Disable caching for a query scope
+     * 
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeDoNotCache($query)
+    {
+        // If it's already a CacheQueryBuilder, call its doNotCache method
+        if ($query instanceof CacheQueryBuilder) {
+            return $query->doNotCache();
+        }
+        
+        // Otherwise just return the query as-is
+        return $query;
     }
 
     /**

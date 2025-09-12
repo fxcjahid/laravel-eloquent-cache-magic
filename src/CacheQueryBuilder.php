@@ -75,6 +75,11 @@ class CacheQueryBuilder
     protected CacheStatistics $statistics;
 
     /**
+     * Flag to disable caching for this query
+     */
+    protected bool $cacheDisabled = false;
+
+    /**
      * Constructor
      */
     public function __construct($query = null, array $options = [])
@@ -90,11 +95,56 @@ class CacheQueryBuilder
         $this->forceRefresh = $options['refresh'] ?? false;
         $this->debugMode    = $options['debug'] ?? config('cache-magic.debug', false);
         $this->version      = $options['version'] ?? config('cache-magic.version', '1');
-        $this->adaptiveTtl  = $options['adaptive'] ?? config('cache-magic.adaptive_ttl', false);
+        $this->adaptiveTtl  = $options['adaptive'] ?? config('cache-magic.adaptive_ttl.enabled', false);
 
         // Add global tags if configured
         if ($globalTags = config('cache-magic.global_tags', [])) {
             $this->tags = array_merge($this->tags, $globalTags);
+        }
+
+        // Automatically add user/guest tag
+        $this->addUserTag();
+    }
+
+    /**
+     * Automatically add user or guest tag to cache
+     */
+    protected function addUserTag(): void
+    {
+        // Check if auto user tags are enabled
+        if (!config('cache-magic.auto_user_tags.enabled', true)) {
+            return;
+        }
+
+        if (Auth::check()) {
+            // For authenticated users
+            $this->tags[] = 'user:' . Auth::id();
+        } else {
+            // For guests, use configured fallback strategy
+            $fallback = config('cache-magic.auto_user_tags.guest_fallback', 'session');
+            $guestId = $this->getGuestIdentifier($fallback);
+            $this->tags[] = 'guest:' . $guestId;
+        }
+    }
+
+    /**
+     * Get guest identifier based on fallback strategy
+     */
+    protected function getGuestIdentifier(string $fallback): string
+    {
+        switch ($fallback) {
+            case 'session':
+                // Use session ID if available
+                return session()->getId() ?: uniqid('no-session-');
+                
+            case 'ip':
+                // Use IP address (be careful with this in production)
+                return md5(request()->ip() ?: 'no-ip');
+                
+            case 'unique':
+            default:
+                // Always generate a unique ID (no cache sharing between requests)
+                return uniqid('guest-');
         }
     }
 
@@ -120,6 +170,10 @@ class CacheQueryBuilder
      */
     protected function getModelProperty($model, string $property, $default = null)
     {
+        if (!$model || !is_object($model)) {
+            return $default;
+        }
+        
         return property_exists($model, $property) ? $model->$property : $default;
     }
 
@@ -278,6 +332,27 @@ class CacheQueryBuilder
     }
 
     /**
+     * Disable caching for this query and return the original query builder
+     * 
+     * @return mixed
+     */
+    public function doNotCache()
+    {
+        $this->cacheDisabled = true;
+        return $this->query;
+    }
+    
+    /**
+     * Get current tags
+     * 
+     * @return array
+     */
+    public function getTags(): array
+    {
+        return $this->tags;
+    }
+
+    /**
      * Execute exists() with caching
      */
     public function exists(): bool
@@ -308,8 +383,18 @@ class CacheQueryBuilder
      */
     protected function executeWithCache(string $cacheKey, int $ttl, callable $callback)
     {
+        // If caching is disabled, execute the callback directly
+        if ($this->cacheDisabled) {
+            return $callback();
+        }
+
         // Log the operation if debug mode is enabled
         $this->logOperation('attempt', $cacheKey);
+
+        // Add adaptive TTL logic
+        if ($this->adaptiveTtl) {
+            $ttl = $this->calculateAdaptiveTtl($cacheKey, $ttl);
+        }
 
         // Check if we should use tagged cache
         if ($this->shouldUseTags()) {

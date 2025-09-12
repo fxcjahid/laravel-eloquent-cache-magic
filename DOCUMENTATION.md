@@ -19,8 +19,8 @@
 ## Installation
 
 ### Requirements
-- PHP 8.0 or higher
-- Laravel 9.0, 10.0, or 11.0
+- PHP 8.0, 8.1, 8.2, 8.3, or 8.4
+- Laravel 10.0, 11.0, or 12.0
 - Redis or Memcached (optional, for tag support)
 
 ### Step 1: Install Package
@@ -98,6 +98,16 @@ return [
         'min_ttl' => 300,     // 5 minutes
         'max_ttl' => 86400,   // 24 hours
         'thresholds' => [
+            'hot' => 100,     // Access count for hot data
+            'warm' => 50,     // Access count for warm data
+        ],
+    ],
+    
+    // Auto User Tags - Automatically add user/guest tags
+    'auto_user_tags' => [
+        'enabled' => true,
+        'guest_fallback' => 'session', // Options: 'session', 'ip', 'unique'
+    ],
             'hot' => 100,     // Access count for hot data
             'warm' => 50,     // Access count for warm data
         ],
@@ -187,6 +197,7 @@ $products = Product::where('category', 'electronics')
 | Method | Description | Example |
 |--------|-------------|---------|
 | `cache()` | Enable caching | `Model::cache()->get()` |
+| `doNotCache()` | Disable caching for a query | `Model::cache()->doNotCache()->get()` |
 | `cache($ttl)` | Cache with TTL in seconds | `Model::cache(3600)->get()` |
 | `cache($key)` | Cache with custom key | `Model::cache('my_key')->get()` |
 | `ttl($seconds)` | Set cache duration | `->ttl(7200)` |
@@ -315,6 +326,76 @@ Cache::tags(['tenant:' . $tenantId . ':invoices'])->flush();
 2. **Performance**: Don't clear everything when one thing changes
 3. **Multi-tenancy**: Isolate cache by user/workspace/tenant
 4. **Bulk Operations**: Clear related caches with one command
+
+---
+
+## Auto User Tags
+
+### Overview
+The package automatically adds user or guest tags to all cached queries, enabling user-specific cache management.
+
+### Configuration
+```php
+// config/cache-magic.php
+'auto_user_tags' => [
+    'enabled' => true,  // Enable/disable auto user tags
+    'guest_fallback' => 'session', // Options: 'session', 'ip', 'unique'
+],
+```
+
+### Guest Fallback Strategies
+- **`session`**: Uses session ID for guests (requires active session)
+- **`ip`**: Uses hashed IP address (be careful with privacy regulations)
+- **`unique`**: Always generates unique ID (no cache sharing between requests)
+
+### How It Works
+```php
+// For authenticated users - automatically adds 'user:123' tag
+$products = Product::cache()->get();
+
+// For guests - automatically adds 'guest:session-id' tag
+$products = Product::cache()->get();
+
+// Clear cache for specific user
+cache_clear_user(123);  // Clears all cache for user ID 123
+
+// Clear cache for current user
+cache_clear_user();  // Clears current user's cache
+
+// Clear cache for guests
+cache_clear_guest();  // Clears current guest session cache
+```
+
+---
+
+## Disabling Cache with doNotCache()
+
+### When to Use
+Use `doNotCache()` when you need to bypass caching for specific queries, especially useful for:
+- DataTables that require raw Eloquent builders
+- Real-time data that should never be cached
+- Debug or development scenarios
+
+### Examples
+```php
+// Explicitly disable caching for a query
+$users = User::doNotCache()->get();
+
+// Use with DataTables
+public function table($request): UsersTable
+{
+    // DataTables needs raw Eloquent Builder, not CacheQueryBuilder
+    $query = User::query()->doNotCache();
+    return new UsersTable($query);
+}
+
+// Disable caching in a scope
+public function scopeGetRealTimeData($query)
+{
+    return $query->doNotCache()
+        ->where('updated_at', '>', now()->subMinute());
+}
+```
 
 ---
 
@@ -676,6 +757,21 @@ $supportsTags = cache_supports_tags();
 cache_warm_model(Product::class, [
     ['method' => 'where', 'args' => ['featured', true]],
 ]);
+
+// Clear cache for specific user
+cache_clear_user(123);  // User ID 123
+
+// Clear cache for current user
+cache_clear_user();
+
+// Clear cache for guest session
+cache_clear_guest();
+
+// Clear all users' cache
+cache_clear_all_users();
+
+// Clear all guests' cache
+cache_clear_all_guests();
 ```
 
 ### Facade Usage
