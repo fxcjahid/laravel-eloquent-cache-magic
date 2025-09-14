@@ -1,34 +1,39 @@
 # Laravel Eloquent Cache Magic - Complete Documentation
 
 ## Table of Contents
+
 1. [Installation](#installation)
 2. [Configuration](#configuration)
-3. [Basic Usage](#basic-usage)
-4. [Query Methods](#query-methods)
-5. [Cache Tags Explained](#cache-tags-explained)
-6. [Model Integration](#model-integration)
-7. [Console Commands](#console-commands)
-8. [API Middleware](#api-middleware)
-9. [Statistics & Monitoring](#statistics--monitoring)
-10. [Helper Functions](#helper-functions)
-11. [Advanced Features](#advanced-features)
-12. [Troubleshooting](#troubleshooting)
+3. [Automatic Query Caching](#automatic-query-caching)
+4. [Basic Usage](#basic-usage)
+5. [Query Methods](#query-methods)
+6. [Cache Tags Explained](#cache-tags-explained)
+7. [Model Integration](#model-integration)
+8. [Console Commands](#console-commands)
+9. [API Middleware](#api-middleware)
+10. [Statistics &amp; Monitoring](#statistics--monitoring)
+11. [Helper Functions](#helper-functions)
+12. [Advanced Features](#advanced-features)
+13. [Troubleshooting](#troubleshooting)
 
 ---
 
 ## Installation
 
 ### Requirements
+
 - PHP 8.0, 8.1, 8.2, 8.3, or 8.4
 - Laravel 10.0, 11.0, or 12.0
 - Redis or Memcached (optional, for tag support)
 
 ### Step 1: Install Package
+
 ```bash
 composer require fxcjahid/laravel-eloquent-cache-magic
 ```
 
 ### Step 2: Publish Configuration (Optional)
+
 ```bash
 php artisan vendor:publish --tag=cache-magic-config
 ```
@@ -36,11 +41,13 @@ php artisan vendor:publish --tag=cache-magic-config
 ### Step 3: Configure Cache Driver
 
 #### For Redis (Recommended)
+
 ```bash
 composer require predis/predis
 ```
 
 `.env` file:
+
 ```env
 CACHE_DRIVER=redis
 REDIS_HOST=127.0.0.1
@@ -49,16 +56,166 @@ REDIS_PORT=6379
 ```
 
 #### For Memcached
+
 ```bash
 pecl install memcached
 ```
 
 `.env` file:
+
 ```env
 CACHE_DRIVER=memcached
 MEMCACHED_HOST=127.0.0.1
 MEMCACHED_PORT=11211
 ```
+
+---
+
+## Automatic Query Caching
+
+### Zero-Code Caching
+
+Laravel Eloquent Cache Magic can automatically cache ALL your Eloquent queries without requiring any code changes. This feature uses an intelligent query interceptor that automatically applies caching to SELECT operations.
+
+### How It Works
+
+When enabled, the package automatically:
+
+1. **Intercepts all Eloquent queries** through a custom query builder
+2. **Caches SELECT operations** with smart TTL management
+3. **Skips write operations** (INSERT, UPDATE, DELETE)
+4. **Invalidates cache** on model changes
+
+### Enabling Auto-Cache
+
+Auto-cache is enabled by default. Configure it in `config/cache-magic.php`:
+
+```php
+'auto_cache' => [
+    'enabled' => true,              // Master switch for auto-caching
+    'ttl' => 3600,                  // Default TTL in seconds (1 hour)
+    'aggregate_ttl' => 300,         // TTL for count/sum/avg queries (5 min)
+    'find_ttl' => 7200,             // TTL for find/findOrFail queries (2 hours)
+],
+```
+
+Or use environment variables:
+
+```env
+CACHE_MAGIC_AUTO_CACHE=true
+CACHE_MAGIC_AUTO_CACHE_TTL=3600
+CACHE_MAGIC_AGGREGATE_TTL=300
+CACHE_MAGIC_FIND_TTL=7200
+```
+
+### Usage Examples
+
+#### All Queries Are Automatically Cached
+
+```php
+// These queries are AUTOMATICALLY cached (no ->cache() needed!)
+$users = User::all();                           // Cached for 1 hour
+$user = User::find(1);                          // Cached for 2 hours
+$product = Product::where('active', true)->first(); // Cached for 1 hour
+$count = Order::count();                        // Cached for 5 minutes
+$total = Invoice::sum('amount');                // Cached for 5 minutes
+$posts = Post::with('comments')->get();         // Cached with relationships
+```
+
+#### Bypassing Auto-Cache
+
+Sometimes you need fresh data directly from the database:
+
+```php
+// Method 1: Using withoutCache()
+$freshUsers = User::withoutCache()->get();
+$freshOrder = Order::withoutCache()->find($id);
+
+// Method 2: Using fresh() alias
+$freshProducts = Product::fresh()->where('updated_at', '>', now()->subHour())->get();
+$freshStats = Analytics::fresh()->sum('views');
+```
+
+#### Disabling Auto-Cache for Specific Models
+
+```php
+use Illuminate\Database\Eloquent\Model;
+use Fxcjahid\LaravelEloquentCacheMagic\Traits\CacheableTrait;
+
+class RealtimeData extends Model
+{
+    use CacheableTrait;
+
+    // Disable auto-cache for this model
+    protected $autoCache = false;
+
+    // You can still use manual caching
+    // RealtimeData::cache()->get();
+}
+```
+
+### Smart TTL Management
+
+The auto-cache system intelligently adjusts TTL based on query type:
+
+| Query Type                             | Default TTL | Configuration Key            | Description           |
+| -------------------------------------- | ----------- | ---------------------------- | --------------------- |
+| Regular queries (get, all, first)      | 1 hour      | `auto_cache.ttl`           | Standard data queries |
+| Find operations (find, findOrFail)     | 2 hours     | `auto_cache.find_ttl`      | Single record lookups |
+| Aggregates (count, sum, avg, min, max) | 5 minutes   | `auto_cache.aggregate_ttl` | Statistical queries   |
+| Existence checks (exists, doesntExist) | 5 minutes   | `auto_cache.aggregate_ttl` | Boolean checks        |
+
+### Auto-Cache with Relationships
+
+```php
+// Relationships are also auto-cached
+$userWithPosts = User::with('posts')->find(1);           // Cached
+$postsWithComments = Post::with('comments')->get();      // Cached
+$ordersWithItems = Order::with(['items', 'customer'])->get(); // Cached
+
+// Bypass cache for fresh relationship data
+$freshUserWithPosts = User::withoutCache()->with('posts')->find(1);
+```
+
+### Cache Key Generation
+
+Auto-cache generates unique cache keys based on:
+
+- Model class name
+- Query SQL
+- Query bindings
+- Method called (get, first, find, etc.)
+
+Example cache key format:
+
+```
+v1:auto:user:find:a3f4b2c1d5e6f7g8h9i0j1k2
+```
+
+### Performance Considerations
+
+1. **Automatic Invalidation**: Cache is automatically cleared when models are created, updated, or deleted
+2. **Tag Support**: Uses Redis/Memcached tags for efficient invalidation
+3. **Memory Usage**: Monitor cache size with `php artisan cache-magic:stats`
+4. **Query Optimization**: Cached queries return instantly without hitting the database
+
+### Monitoring Auto-Cache
+
+```php
+// Check if auto-cache is working
+$user = User::find(1);  // First call: hits database
+$user = User::find(1);  // Second call: hits cache
+
+// View cache statistics
+php artisan cache-magic:stats
+```
+
+### Best Practices
+
+1. **Use `withoutCache()` for real-time data**: Financial transactions, inventory, etc.
+2. **Shorter TTL for frequently changing data**: Use model-specific `$cacheExpiry`
+3. **Monitor cache hit rates**: Use statistics to optimize TTL values
+4. **Clear cache after deployments**: `php artisan cache-magic:clear`
 
 ---
 
@@ -70,16 +227,16 @@ All configuration options are in `config/cache-magic.php`:
 return [
     // Master switch to enable/disable caching
     'enabled' => env('CACHE_MAGIC_ENABLED', true),
-    
+  
     // Default cache duration in seconds (1 hour)
     'default_ttl' => env('CACHE_MAGIC_DEFAULT_TTL', 3600),
-    
+  
     // Cache version for easy invalidation
     'version' => env('CACHE_MAGIC_VERSION', '1'),
-    
+  
     // Global tags applied to all cache entries
     'global_tags' => ['app'],
-    
+  
     // Automatic cache invalidation on model events
     'auto_invalidation' => [
         'enabled' => true,
@@ -91,7 +248,15 @@ return [
             'forceDeleted' => true,
         ],
     ],
-    
+
+    // NEW: Automatic query caching without ->cache() calls
+    'auto_cache' => [
+        'enabled' => true,              // Enable auto-caching
+        'ttl' => 3600,                  // Default TTL (1 hour)
+        'aggregate_ttl' => 300,         // TTL for count/sum/avg (5 min)
+        'find_ttl' => 7200,             // TTL for find() (2 hours)
+    ],
+  
     // Adaptive TTL based on access frequency
     'adaptive_ttl' => [
         'enabled' => false,
@@ -102,7 +267,7 @@ return [
             'warm' => 50,     // Access count for warm data
         ],
     ],
-    
+  
     // Auto User Tags - Automatically add user/guest tags
     'auto_user_tags' => [
         'enabled' => true,
@@ -112,25 +277,25 @@ return [
             'warm' => 50,     // Access count for warm data
         ],
     ],
-    
+  
     // Cache statistics tracking
     'statistics' => [
         'enabled' => true,
         'ttl' => 86400,       // Keep stats for 24 hours
         'detailed' => false,  // Track per-key statistics
     ],
-    
+  
     // Debug mode for development
     'debug' => env('CACHE_MAGIC_DEBUG', false),
     'log_channel' => 'single',
-    
+  
     // Cache warming configuration
     'warming' => [
         'enabled' => false,
         'schedule' => '0 * * * *', // Hourly
         'queries' => [],
     ],
-    
+  
     // API middleware configuration
     'middleware' => [
         'enabled' => false,
@@ -146,6 +311,7 @@ return [
 ## Basic Usage
 
 ### Simple Query Caching
+
 ```php
 use App\Models\User;
 
@@ -163,6 +329,7 @@ $users = User::where('active', true)
 ```
 
 ### Method Chaining
+
 ```php
 $products = Product::where('category', 'electronics')
     ->with(['images', 'reviews'])
@@ -180,43 +347,43 @@ $products = Product::where('category', 'electronics')
 
 ### Supported Query Execution Methods
 
-| Method | Description | Return Type | Example |
-|--------|-------------|-------------|---------|
-| `get()` | Get collection of models | `Collection` | `->cache()->get()` |
-| `first()` | Get first model | `Model\|null` | `->cache()->first()` |
-| `count()` | Count records | `int` | `->cache()->count()` |
-| `exists()` | Check if records exist | `bool` | `->cache()->exists()` |
-| `sum($column)` | Sum column values | `numeric` | `->cache()->sum('price')` |
-| `avg($column)` | Average of column | `numeric` | `->cache()->avg('rating')` |
-| `max($column)` | Maximum value | `mixed` | `->cache()->max('price')` |
-| `min($column)` | Minimum value | `mixed` | `->cache()->min('price')` |
-| `pluck($column)` | Get column values | `Collection` | `->cache()->pluck('email')` |
+| Method             | Description              | Return Type    | Example                       |
+| ------------------ | ------------------------ | -------------- | ----------------------------- |
+| `get()`          | Get collection of models | `Collection` | `->cache()->get()`          |
+| `first()`        | Get first model          | `Model\|null` | `->cache()->first()`        |
+| `count()`        | Count records            | `int`        | `->cache()->count()`        |
+| `exists()`       | Check if records exist   | `bool`       | `->cache()->exists()`       |
+| `sum($column)`   | Sum column values        | `numeric`    | `->cache()->sum('price')`   |
+| `avg($column)`   | Average of column        | `numeric`    | `->cache()->avg('rating')`  |
+| `max($column)`   | Maximum value            | `mixed`      | `->cache()->max('price')`   |
+| `min($column)`   | Minimum value            | `mixed`      | `->cache()->min('price')`   |
+| `pluck($column)` | Get column values        | `Collection` | `->cache()->pluck('email')` |
 
 ### Configuration Methods
 
-| Method | Description | Example |
-|--------|-------------|---------|
-| `cache()` | Enable caching | `Model::cache()->get()` |
-| `doNotCache()` | Disable caching for a query | `Model::cache()->doNotCache()->get()` |
-| `cache($ttl)` | Cache with TTL in seconds | `Model::cache(3600)->get()` |
-| `cache($key)` | Cache with custom key | `Model::cache('my_key')->get()` |
-| `ttl($seconds)` | Set cache duration | `->ttl(7200)` |
-| `tags($array)` | Add cache tags | `->tags(['users', 'active'])` |
-| `key($string)` | Set custom cache key | `->key('custom_key')` |
-| `refresh()` | Force refresh cache | `->refresh()->get()` |
-| `debug()` | Enable debug logging | `->debug()->get()` |
-| `version($string)` | Set cache version | `->version('2')` |
-| `adaptive()` | Enable adaptive TTL | `->adaptive()->get()` |
-| `refreshAsync()` | Refresh in background | `->refreshAsync()->get()` |
-| `warmUp()` | Pre-load cache | `->warmUp()` |
+| Method               | Description                 | Example                                 |
+| -------------------- | --------------------------- | --------------------------------------- |
+| `cache()`          | Enable caching              | `Model::cache()->get()`               |
+| `doNotCache()`     | Disable caching for a query | `Model::cache()->doNotCache()->get()` |
+| `cache($ttl)`      | Cache with TTL in seconds   | `Model::cache(3600)->get()`           |
+| `cache($key)`      | Cache with custom key       | `Model::cache('my_key')->get()`       |
+| `ttl($seconds)`    | Set cache duration          | `->ttl(7200)`                         |
+| `tags($array)`     | Add cache tags              | `->tags(['users', 'active'])`         |
+| `key($string)`     | Set custom cache key        | `->key('custom_key')`                 |
+| `refresh()`        | Force refresh cache         | `->refresh()->get()`                  |
+| `debug()`          | Enable debug logging        | `->debug()->get()`                    |
+| `version($string)` | Set cache version           | `->version('2')`                      |
+| `adaptive()`       | Enable adaptive TTL         | `->adaptive()->get()`                 |
+| `refreshAsync()`   | Refresh in background       | `->refreshAsync()->get()`             |
+| `warmUp()`         | Pre-load cache              | `->warmUp()`                          |
 
 ### Macro Methods
 
-| Method | Description | Example |
-|--------|-------------|---------|
-| `cacheForever()` | Cache indefinitely | `Model::cacheForever()->get()` |
-| `cacheFor($minutes)` | Cache for minutes | `Model::cacheFor(30)->get()` |
-| `dontCache()` | Disable caching | `Model::dontCache()->get()` |
+| Method                 | Description        | Example                          |
+| ---------------------- | ------------------ | -------------------------------- |
+| `cacheForever()`     | Cache indefinitely | `Model::cacheForever()->get()` |
+| `cacheFor($minutes)` | Cache for minutes  | `Model::cacheFor(30)->get()`   |
+| `dontCache()`        | Disable caching    | `Model::dontCache()->get()`    |
 
 ---
 
@@ -260,6 +427,7 @@ Cache::tags(['projects', 'active'])->flush();
 ### Real-World Tag Usage
 
 #### E-Commerce Example
+
 ```php
 class ProductController
 {
@@ -267,32 +435,32 @@ class ProductController
     {
         $tags = ['products'];
         $query = Product::query();
-        
+      
         // Add category tag if filtered
         if ($category = $request->get('category')) {
             $query->where('category_id', $category);
             $tags[] = 'category:' . $category;
         }
-        
+      
         // Add brand tag if filtered
         if ($brand = $request->get('brand')) {
             $query->where('brand_id', $brand);
             $tags[] = 'brand:' . $brand;
         }
-        
+      
         // Cache with all relevant tags
         $products = $query->cache()
             ->tags($tags)
             ->ttl(1800) // 30 minutes
             ->get();
-        
+      
         return view('products.index', compact('products'));
     }
-    
+  
     public function update(Product $product)
     {
         $product->update(request()->all());
-        
+      
         // Clear relevant caches
         Cache::tags(['products'])->flush();                     // All products
         Cache::tags(['category:' . $product->category_id])->flush(); // Category
@@ -302,6 +470,7 @@ class ProductController
 ```
 
 #### Multi-Tenant SaaS Example
+
 ```php
 // Cache with tenant isolation
 $invoices = Invoice::where('tenant_id', $tenantId)
@@ -332,9 +501,11 @@ Cache::tags(['tenant:' . $tenantId . ':invoices'])->flush();
 ## Auto User Tags
 
 ### Overview
+
 The package automatically adds user or guest tags to all cached queries, enabling user-specific cache management.
 
 ### Configuration
+
 ```php
 // config/cache-magic.php
 'auto_user_tags' => [
@@ -344,11 +515,13 @@ The package automatically adds user or guest tags to all cached queries, enablin
 ```
 
 ### Guest Fallback Strategies
+
 - **`session`**: Uses session ID for guests (requires active session)
 - **`ip`**: Uses hashed IP address (be careful with privacy regulations)
 - **`unique`**: Always generates unique ID (no cache sharing between requests)
 
 ### How It Works
+
 ```php
 // For authenticated users - automatically adds 'user:123' tag
 $products = Product::cache()->get();
@@ -371,12 +544,15 @@ cache_clear_guest();  // Clears current guest session cache
 ## Disabling Cache with doNotCache()
 
 ### When to Use
+
 Use `doNotCache()` when you need to bypass caching for specific queries, especially useful for:
+
 - DataTables that require raw Eloquent builders
 - Real-time data that should never be cached
 - Debug or development scenarios
 
 ### Examples
+
 ```php
 // Explicitly disable caching for a query
 $users = User::doNotCache()->get();
@@ -414,13 +590,13 @@ use Fxcjahid\LaravelEloquentCacheMagic\Traits\CacheableTrait;
 class Product extends Model
 {
     use CacheableTrait;
-    
+  
     // Default cache duration in seconds (2 hours)
     protected $cacheExpiry = 7200;
-    
+  
     // Default cache tags for this model
     protected $cacheTags = ['products'];
-    
+  
     // Dynamic tags based on model attributes
     public function dynamicCacheTags(): array
     {
@@ -430,7 +606,7 @@ class Product extends Model
             'status:' . $this->status,
         ];
     }
-    
+  
     // Custom cache invalidation logic
     public function onCacheInvalidated(string $event): void
     {
@@ -438,11 +614,11 @@ class Product extends Model
         if ($this->is_featured) {
             Cache::tags(['homepage'])->flush();
         }
-        
+      
         // Clear category page cache
         Cache::tags(['category:' . $this->category_id . ':page'])->flush();
     }
-    
+  
     // Define cacheable relationships
     public function cacheableRelations(): array
     {
@@ -555,6 +731,7 @@ php artisan cache-magic:warm --parallel
 ```
 
 Configuration example for warming:
+
 ```php
 // config/cache-magic.php
 'warming' => [
@@ -642,6 +819,7 @@ class ProductController extends Controller
 ### Response Headers
 
 Cached responses include these headers:
+
 - `X-Cache: HIT` or `X-Cache: MISS`
 - `X-Cache-Time: 2024-01-15T10:30:00Z` (when cached)
 
@@ -714,7 +892,7 @@ public function dashboard()
 {
     $cacheStats = app(CacheStatistics::class)->getGlobalStats();
     $cacheHealth = app(CacheHealth::class)->check();
-    
+  
     return view('admin.dashboard', [
         'cacheHitRate' => $cacheStats['hit_rate'],
         'cacheStatus' => $cacheHealth['status'],
@@ -909,6 +1087,7 @@ $products = Product::when(app()->environment('production'), function ($query) {
 **Problem**: `Cache::supportsTags()` returns false
 
 **Solution**: Install Redis or Memcached
+
 ```bash
 # For Redis
 composer require predis/predis
@@ -922,6 +1101,7 @@ pecl install memcached
 **Problem**: Cache doesn't clear on model updates
 
 **Solution**: Ensure model uses CacheableTrait
+
 ```php
 class User extends Model
 {
@@ -934,6 +1114,7 @@ class User extends Model
 **Problem**: Cache consuming too much memory
 
 **Solutions**:
+
 1. Reduce TTL values
 2. Use Redis instead of file driver
 3. Enable cache eviction policies
@@ -944,6 +1125,7 @@ class User extends Model
 **Problem**: Slow cache operations
 
 **Solutions**:
+
 1. Switch to Redis/Memcached
 2. Disable detailed statistics
 3. Use cache warming
@@ -993,12 +1175,12 @@ if (Cache::supportsTags()) {
 
 Typical performance improvements:
 
-| Operation | Without Cache | With Cache (File) | With Cache (Redis) |
-|-----------|--------------|-------------------|-------------------|
-| Simple Query | 50ms | 5ms | 1ms |
-| Complex Join | 200ms | 10ms | 2ms |
-| With Relations | 300ms | 15ms | 3ms |
-| Count Query | 100ms | 3ms | 0.5ms |
+| Operation      | Without Cache | With Cache (File) | With Cache (Redis) |
+| -------------- | ------------- | ----------------- | ------------------ |
+| Simple Query   | 50ms          | 5ms               | 1ms                |
+| Complex Join   | 200ms         | 10ms              | 2ms                |
+| With Relations | 300ms         | 15ms              | 3ms                |
+| Count Query    | 100ms         | 3ms               | 0.5ms              |
 
 ---
 

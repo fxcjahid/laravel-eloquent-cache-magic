@@ -291,7 +291,7 @@ trait CacheableTrait
     public function getCacheStatistics(): array
     {
         $stats = app(\Fxcjahid\LaravelEloquentCacheMagic\Monitoring\CacheStatistics::class);
-        
+
         return [
             'model' => get_class($this),
             'cache_tag' => $this->getCacheTagForModel(),
@@ -300,5 +300,27 @@ trait CacheableTrait
             'supports_tags' => Cache::supportsTags(),
             'stats' => $stats->getModelStats(get_class($this)),
         ];
+    }
+
+    /**
+     * Override the default Eloquent builder to use auto-caching
+     *
+     * @param  \Illuminate\Database\Query\Builder  $query
+     * @return \Fxcjahid\LaravelEloquentCacheMagic\AutoCacheEloquentBuilder
+     */
+    public function newEloquentBuilder($query)
+    {
+        // Check if auto-cache is enabled globally
+        if (!config('cache-magic.auto_cache.enabled', false)) {
+            return parent::newEloquentBuilder($query);
+        }
+
+        // Check if auto-cache is disabled for this specific model
+        if (property_exists($this, 'autoCache') && $this->autoCache === false) {
+            return parent::newEloquentBuilder($query);
+        }
+
+        // Use auto-caching builder
+        return new \Fxcjahid\LaravelEloquentCacheMagic\AutoCacheEloquentBuilder($query);
     }
 }

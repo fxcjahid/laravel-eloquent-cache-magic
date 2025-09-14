@@ -1,17 +1,21 @@
 {
     "name": "fxcjahid/laravel-eloquent-cache-magic",
-    "description": "A powerful Laravel package for automatic Eloquent query caching with Redis/Memcached tag support, automatic invalidation, and advanced monitoring",
+    "description": "A powerful Laravel package for automatic Eloquent query caching with zero-code auto-cache, Redis/Memcached tag support, automatic invalidation, and advanced monitoring",
+    "version": "0.3",
     "keywords": [
         "laravel",
         "cache",
         "eloquent",
+        "auto-cache",
+        "automatic-caching",
         "redis",
         "memcached",
         "query-builder",
         "performance",
         "optimization",
         "tags",
-        "invalidation"
+        "invalidation",
+        "zero-configuration"
     ],
     "type": "library",
     "license": "MIT",
@@ -77,6 +81,4 @@
     },
     "minimum-stability": "dev",
     "prefer-stable": true
-
 }
-

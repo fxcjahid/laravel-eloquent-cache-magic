@@ -81,6 +81,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Automatic Query Caching
+    |--------------------------------------------------------------------------
+    |
+    | Enable automatic caching of all Eloquent queries without requiring
+    | explicit ->cache() calls. When enabled, all SELECT queries will be
+    | automatically cached with smart TTL management.
+    |
+    */
+    'auto_cache' => [
+        'enabled' => env('CACHE_MAGIC_AUTO_CACHE', true),
+        'ttl' => env('CACHE_MAGIC_AUTO_CACHE_TTL', 3600),        // Default TTL for auto-cached queries
+        'aggregate_ttl' => env('CACHE_MAGIC_AGGREGATE_TTL', 300), // TTL for count/sum/avg queries (5 min)
+        'find_ttl' => env('CACHE_MAGIC_FIND_TTL', 7200),         // TTL for find queries (2 hours)
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Adaptive TTL
     |--------------------------------------------------------------------------
     |

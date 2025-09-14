@@ -12,6 +12,7 @@ A powerful Laravel package that adds automatic and intelligent caching to your E
 ## ✨ Features
 
 - 🚀 **Zero Configuration** - Works out of the box with sensible defaults
+- 🎉 **Automatic Query Caching** - All queries are automatically cached without any code changes!
 - 🏷️ **Cache Tags Support** - Full support for Redis and Memcached tagged caching
 - 🔄 **Automatic Cache Invalidation** - Cache automatically clears on model create, update, delete
 - 📊 **Built-in Statistics** - Monitor cache hit rates and performance
@@ -26,8 +27,8 @@ A powerful Laravel package that adds automatic and intelligent caching to your E
 
 ## 📋 Requirements
 
-- PHP 8.0 / 8.1 / 8.2 / 8.3 / 8.4
-- Laravel 10.0 / 11.0 / 12.0
+- PHP 8.0 - 8.4
+- Laravel 10.0 - 12.0
 - Redis or Memcached (optional, for tag support)
 
 ## 📦 Installation
@@ -56,6 +57,7 @@ REDIS_PORT=6379
 ```
 
 #### Also update config\database.php
+
 ```php
 'redis' => [
     'client' => env('REDIS_CLIENT', 'predis'),
@@ -64,12 +66,36 @@ REDIS_PORT=6379
 
 ## 🚀 Quick Start
 
-### Basic Usage
+### 🎉 NEW: Automatic Query Caching (v0.2+)
+
+With auto-cache enabled, ALL your queries are automatically cached without any code changes:
 
 ```php
 use App\Models\User;
+use App\Models\Product;
 
-// Automatically cache the query
+// These queries are AUTOMATICALLY cached (no ->cache() needed!)
+$users = User::all();                          // Auto-cached!
+$product = Product::find(1);                   // Auto-cached!
+$count = User::where('active', true)->count(); // Auto-cached!
+
+// Bypass auto-cache when you need fresh data
+$freshUsers = User::withoutCache()->get();     // Skip cache
+$freshProduct = Product::fresh()->find(1);     // Skip cache
+
+// Disable auto-cache for specific models
+class Order extends Model {
+    use CacheableTrait;
+    protected $autoCache = false;  // Disable auto-cache for this model
+}
+```
+
+### Manual Caching (Traditional Method)
+
+You can still manually control caching with the `->cache()` method:
+
+```php
+// Manually cache the query
 $users = User::where('active', true)->cache()->get();
 
 // Cache for specific duration (in seconds)
@@ -94,13 +120,41 @@ use Fxcjahid\LaravelEloquentCacheMagic\Traits\CacheableTrait;
 class Product extends Model
 {
     use CacheableTrait;
-    
+  
     protected $cacheExpiry = 7200; // 2 hours
     protected $cacheTags = ['products'];
 }
 ```
 
 ## 🎯 Key Features Explained
+
+### 🎉 Automatic Query Caching (NEW!)
+
+Enable automatic caching for ALL queries without changing your code:
+
+```php
+// In config/cache-magic.php
+'auto_cache' => [
+    'enabled' => true,              // Enable auto-caching
+    'ttl' => 3600,                  // Default 1 hour
+    'aggregate_ttl' => 300,         // 5 min for count/sum/avg
+    'find_ttl' => 7200,             // 2 hours for find()
+],
+```
+
+Once enabled, all your existing queries are automatically cached:
+
+```php
+// These are ALL automatically cached now!
+User::all();                        // Cached for 1 hour
+Product::find($id);                 // Cached for 2 hours
+Order::count();                     // Cached for 5 minutes
+Invoice::where('paid', true)->get(); // Cached for 1 hour
+
+// Need fresh data? Bypass cache:
+User::withoutCache()->all();        // Direct from database
+Product::fresh()->find($id);        // Direct from database
+```
 
 ### Cache Tags - Smart Invalidation
 
@@ -124,10 +178,10 @@ Cache::tags(['products'])->flush();
 class Product extends Model
 {
     use CacheableTrait;
-    
+  
     // Cache automatically clears when model is updated/deleted
     protected $cacheTags = ['products'];
-    
+  
     // Dynamic tags based on attributes
     public function dynamicCacheTags(): array
     {
@@ -201,10 +255,10 @@ This package is open-sourced software licensed under the [MIT license](LICENSE).
 ## 👨‍💻 Author
 
 **FXC Jahid**
+
 - GitHub: [@fxcjahid](https://github.com/fxcjahid)
 - Email: fxcjahid3@gmail.com
 
 ## 🌟 Support
-
 
 If you find this package helpful, please give it a ⭐ on [GitHub](https://github.com/fxcjahid/laravel-eloquent-cache-magic)!
