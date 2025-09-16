@@ -112,18 +112,18 @@ class CacheQueryBuilder
     protected function addUserTag(): void
     {
         // Check if auto user tags are enabled
-        if (!config('cache-magic.auto_user_tags.enabled', true)) {
+        if (! config('cache-magic.auto_user_tags.enabled', true)) {
             return;
         }
 
         if (Auth::check()) {
             // For authenticated users
-            $this->tags[] = 'user:' . Auth::id();
+            $this->tags[] = 'user:'.Auth::id();
         } else {
             // For guests, use configured fallback strategy
-            $fallback = config('cache-magic.auto_user_tags.guest_fallback', 'session');
-            $guestId = $this->getGuestIdentifier($fallback);
-            $this->tags[] = 'guest:' . $guestId;
+            $fallback     = config('cache-magic.auto_user_tags.guest_fallback', 'session');
+            $guestId      = $this->getGuestIdentifier($fallback);
+            $this->tags[] = 'guest:'.$guestId;
         }
     }
 
@@ -136,11 +136,11 @@ class CacheQueryBuilder
             case 'session':
                 // Use session ID if available
                 return session()->getId() ?: uniqid('no-session-');
-                
+
             case 'ip':
                 // Use IP address (be careful with this in production)
                 return md5(request()->ip() ?: 'no-ip');
-                
+
             case 'unique':
             default:
                 // Always generate a unique ID (no cache sharing between requests)
@@ -170,10 +170,10 @@ class CacheQueryBuilder
      */
     protected function getModelProperty($model, string $property, $default = null)
     {
-        if (!$model || !is_object($model)) {
+        if (! $model || ! is_object($model)) {
             return $default;
         }
-        
+
         return property_exists($model, $property) ? $model->$property : $default;
     }
 
@@ -205,7 +205,7 @@ class CacheQueryBuilder
     }
 
     /**
-     * Force refresh cache
+     * Force refresh cache. it will reomve existing cache and again re-cache
      */
     public function refresh(bool $refresh = true): self
     {
@@ -214,7 +214,7 @@ class CacheQueryBuilder
     }
 
     /**
-     * Enable debug mode
+     * Enable debug mode. it will store debug log 
      */
     public function debug(bool $enabled = true): self
     {
@@ -341,7 +341,7 @@ class CacheQueryBuilder
         $this->cacheDisabled = true;
         return $this->query;
     }
-    
+
     /**
      * Get current tags
      * 
@@ -654,7 +654,7 @@ class CacheQueryBuilder
     /**
      * Static helper to create instance for callbacks
      */
-    public static function callback(callable $callback, array $options = []): mixed
+    public static function callback(array $options = [], callable $callback): mixed
     {
         $instance = new static($callback, $options);
         return $instance->executeCallback();

@@ -4,6 +4,7 @@ namespace Fxcjahid\LaravelEloquentCacheMagic;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
+use Fxcjahid\LaravelEloquentCacheMagic\Monitoring\CacheStatistics;
 
 /**
  * Auto-Caching Eloquent Builder
@@ -164,7 +165,7 @@ class AutoCacheEloquentBuilder extends Builder
 
         // Get TTL
         $ttl = config('cache-magic.auto_cache.ttl', 3600);
-        if (property_exists($model, 'cacheExpiry')) {
+        if (property_exists($model, 'cacheExpiry') && $model->cacheExpiry !== null) {
             $ttl = $model->cacheExpiry;
         }
 
@@ -195,6 +196,9 @@ class AutoCacheEloquentBuilder extends Builder
      */
     protected function adjustTtlForMethod(string $method, int $baseTtl): int
     {
+        // Ensure we have a valid base TTL
+        $baseTtl = max(1, $baseTtl);
+
         // Shorter TTL for aggregate functions
         $aggregateMethods = ['count', 'sum', 'avg', 'max', 'min', 'exists', 'doesntExist'];
         if (in_array($method, $aggregateMethods)) {
