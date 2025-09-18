@@ -19,12 +19,12 @@ if (! function_exists('cache_magic')) {
 if (! function_exists('cache_remember')) {
     /**
      * Cache a callback result
-     * 
-     * @param callable $callback
+     *
      * @param array $options
+     * @param callable $callback
      * @return mixed
      */
-    function cache_remember(array $options = [], callable $callback)
+    function cache_remember(array $options, callable $callback)
     {
         return CacheQueryBuilder::callback($options, $callback);
     }
