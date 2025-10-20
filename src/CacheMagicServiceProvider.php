@@ -6,11 +6,6 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Fxcjahid\LaravelEloquentCacheMagic\Console\Commands\CacheClearCommand;
-use Fxcjahid\LaravelEloquentCacheMagic\Console\Commands\CacheWarmCommand;
-use Fxcjahid\LaravelEloquentCacheMagic\Console\Commands\CacheStatsCommand;
-use Fxcjahid\LaravelEloquentCacheMagic\Middleware\CacheApiResponse;
-use Fxcjahid\LaravelEloquentCacheMagic\Monitoring\CacheStatistics;
-use Fxcjahid\LaravelEloquentCacheMagic\Monitoring\CacheHealth;
 
 /**
  * Cache Magic Service Provider
@@ -40,19 +35,7 @@ class CacheMagicServiceProvider extends ServiceProvider
             // Register commands
             $this->commands([
                 CacheClearCommand::class,
-                CacheWarmCommand::class,
-                CacheStatsCommand::class,
             ]);
-        }
-
-        // Register middleware
-        if (config('cache-magic.middleware.enabled', false)) {
-            $this->app['router']->aliasMiddleware('cache.api', CacheApiResponse::class);
-        }
-
-        // Schedule cache warming if enabled
-        if (config('cache-magic.warming.enabled', false)) {
-            $this->scheduleCacheWarming();
         }
     }
 
@@ -66,15 +49,6 @@ class CacheMagicServiceProvider extends ServiceProvider
             __DIR__ . '/../config/cache-magic.php',
             'cache-magic'
         );
-
-        // Register singletons
-        $this->app->singleton(CacheStatistics::class, function ($app) {
-            return new CacheStatistics();
-        });
-
-        $this->app->singleton(CacheHealth::class, function ($app) {
-            return new CacheHealth();
-        });
 
         // Register facade
         $this->app->singleton('cache-magic', function ($app) {
@@ -142,29 +116,12 @@ class CacheMagicServiceProvider extends ServiceProvider
     }
 
     /**
-     * Schedule cache warming tasks
-     */
-    protected function scheduleCacheWarming(): void
-    {
-        $this->app->booted(function () {
-            $schedule = $this->app->make(\Illuminate\Console\Scheduling\Schedule::class);
-            
-            $schedule->command('cache-magic:warm')
-                ->cron(config('cache-magic.warming.schedule', '0 * * * *'))
-                ->withoutOverlapping()
-                ->runInBackground();
-        });
-    }
-
-    /**
      * Get the services provided by the provider.
      */
     public function provides(): array
     {
         return [
             'cache-magic',
-            CacheStatistics::class,
-            CacheHealth::class,
         ];
     }
 }

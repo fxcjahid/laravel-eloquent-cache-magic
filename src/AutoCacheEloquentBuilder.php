@@ -4,7 +4,6 @@ namespace Fxcjahid\LaravelEloquentCacheMagic;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
-use Fxcjahid\LaravelEloquentCacheMagic\Monitoring\CacheStatistics;
 
 /**
  * Auto-Caching Eloquent Builder
@@ -225,15 +224,6 @@ class AutoCacheEloquentBuilder extends Builder
                 'model' => get_class($this->getModel()),
             ]);
         }
-
-        // Update statistics if enabled
-        if (config('cache-magic.statistics.enabled', true)) {
-            try {
-                app(CacheStatistics::class)->recordHit($key);
-            } catch (\Exception $e) {
-                // Silently fail if statistics service not available
-            }
-        }
     }
 
     /**
@@ -246,15 +236,6 @@ class AutoCacheEloquentBuilder extends Builder
                 'key' => $key,
                 'model' => get_class($this->getModel()),
             ]);
-        }
-
-        // Update statistics if enabled
-        if (config('cache-magic.statistics.enabled', true)) {
-            try {
-                app(CacheStatistics::class)->recordMiss($key);
-            } catch (\Exception $e) {
-                // Silently fail if statistics service not available
-            }
         }
     }
 }

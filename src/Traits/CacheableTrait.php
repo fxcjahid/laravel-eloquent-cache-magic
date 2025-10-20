@@ -265,44 +265,6 @@ trait CacheableTrait
     }
 
     /**
-     * Warm up cache for this model
-     */
-    public function warmUpCache(): void
-    {
-        // Find by ID
-        static::findCached($this->getKey());
-
-        // Warm up relationships if defined
-        if (method_exists($this, 'cacheableRelations')) {
-            foreach ($this->cacheableRelations() as $relation) {
-                $this->load($relation);
-            }
-        }
-
-        // Call custom warm up method if defined
-        if (method_exists($this, 'customWarmUp')) {
-            $this->customWarmUp();
-        }
-    }
-
-    /**
-     * Get cache statistics for this model
-     */
-    public function getCacheStatistics(): array
-    {
-        $stats = app(\Fxcjahid\LaravelEloquentCacheMagic\Monitoring\CacheStatistics::class);
-
-        return [
-            'model' => get_class($this),
-            'cache_tag' => $this->getCacheTagForModel(),
-            'instance_tag' => $this->getCacheTagForInstance(),
-            'ttl' => $this->getCacheExpiry(),
-            'supports_tags' => Cache::supportsTags(),
-            'stats' => $stats->getModelStats(get_class($this)),
-        ];
-    }
-
-    /**
      * Override the default Eloquent builder to use auto-caching
      *
      * @param  \Illuminate\Database\Query\Builder  $query

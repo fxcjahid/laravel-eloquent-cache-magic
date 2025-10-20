@@ -5,11 +5,6 @@ namespace Fxcjahid\LaravelEloquentCacheMagic;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Fxcjahid\LaravelEloquentCacheMagic\Monitoring\CacheStatistics;
-use Fxcjahid\LaravelEloquentCacheMagic\Jobs\RefreshCacheJob;
-use Fxcjahid\LaravelEloquentCacheMagic\Events\CacheHit;
-use Fxcjahid\LaravelEloquentCacheMagic\Events\CacheMiss;
-use Fxcjahid\LaravelEloquentCacheMagic\Events\CacheWrite;
 use Fxcjahid\LaravelEloquentCacheMagic\Exceptions\CacheException;
 
 /**
@@ -70,11 +65,6 @@ class CacheQueryBuilder
     protected bool $adaptiveTtl = false;
 
     /**
-     * Cache statistics instance
-     */
-    protected CacheStatistics $statistics;
-
-    /**
      * Flag to disable caching for this query
      */
     protected bool $cacheDisabled = false;
@@ -85,7 +75,6 @@ class CacheQueryBuilder
     public function __construct($query = null, array $options = [])
     {
         $this->query      = $query;
-        $this->statistics = app(CacheStatistics::class);
 
         $modelConfig = $this->getModelCacheConfig();
 
@@ -414,17 +403,10 @@ class CacheQueryBuilder
             $this->logOperation('refresh', $cacheKey);
         }
 
-        $result = Cache::tags($this->tags)->remember($cacheKey, $ttl, function () use ($callback, $cacheKey) {
-            $this->recordMiss($cacheKey);
+        $result = Cache::tags($this->tags)->remember($cacheKey, $ttl, function () use ($callback) {
             $data = $callback();
-            $this->recordWrite($cacheKey);
             return $data;
         });
-
-        // Check if it was a cache hit (not freshly written)
-        if (! $this->forceRefresh) {
-            $this->recordHit($cacheKey);
-        }
 
         return $result;
     }
@@ -439,35 +421,12 @@ class CacheQueryBuilder
             $this->logOperation('refresh', $cacheKey);
         }
 
-        $result = Cache::remember($cacheKey, $ttl, function () use ($callback, $cacheKey) {
-            $this->recordMiss($cacheKey);
+        $result = Cache::remember($cacheKey, $ttl, function () use ($callback) {
             $data = $callback();
-            $this->recordWrite($cacheKey);
             return $data;
         });
 
-        // Check if it was a cache hit
-        if (! $this->forceRefresh) {
-            $this->recordHit($cacheKey);
-        }
-
         return $result;
-    }
-
-    /**
-     * Refresh cache asynchronously
-     */
-    public function refreshAsync(): self
-    {
-        dispatch(new RefreshCacheJob($this->query, [
-            'ttl'  => $this->ttl,
-            'tags' => $this->tags,
-            'key'  => $this->cacheKey,
-        ]));
-
-        $this->logOperation('async_refresh', $this->cacheKey ?? 'auto');
-
-        return $this;
     }
 
     /**
@@ -504,16 +463,6 @@ class CacheQueryBuilder
         }
 
         return false;
-    }
-
-    /**
-     * Warm up cache
-     */
-    public function warmUp(): void
-    {
-        $this->forceRefresh = true;
-        $this->get();
-        $this->logOperation('warm_up', $this->cacheKey ?? 'auto');
     }
 
     /**
@@ -572,36 +521,6 @@ class CacheQueryBuilder
         }
 
         return max($this->ttl / 2, 300); // Min 5 minutes
-    }
-
-    /**
-     * Record cache hit
-     */
-    protected function recordHit(string $key): void
-    {
-        $this->statistics->recordHit($key);
-        event(new CacheHit($key, $this->tags));
-        $this->logOperation('hit', $key);
-    }
-
-    /**
-     * Record cache miss
-     */
-    protected function recordMiss(string $key): void
-    {
-        $this->statistics->recordMiss($key);
-        event(new CacheMiss($key, $this->tags));
-        $this->logOperation('miss', $key);
-    }
-
-    /**
-     * Record cache write
-     */
-    protected function recordWrite(string $key): void
-    {
-        $this->statistics->recordWrite($key);
-        event(new CacheWrite($key, $this->tags, $this->ttl));
-        $this->logOperation('write', $key);
     }
 
     /**

@@ -5,25 +5,22 @@
 [![PHP Version](https://img.shields.io/packagist/php-v/fxcjahid/laravel-eloquent-cache-magic)](https://packagist.org/packages/fxcjahid/laravel-eloquent-cache-magic)
 [![Laravel Version](https://img.shields.io/badge/Laravel-10.x%20|%2011.x%20|%2012.x-orange)](https://laravel.com)
 
-A powerful Laravel package that adds automatic and intelligent caching to your Eloquent queries with zero effort. Features include automatic cache invalidation, Redis/Memcached tag support, cache statistics, and much more!
+A lightweight Laravel package that adds intelligent caching to your Eloquent queries with zero effort. Features include automatic cache invalidation, Redis/Memcached tag support, and flexible caching options!
 
 📖 **[Read Complete Documentation](./DOCUMENTATION.md)** - Everything you need to know in one place
 
 ## ✨ Features
 
 - 🚀 **Zero Configuration** - Works out of the box with sensible defaults
-- 🎉 **Automatic Query Caching** - All queries are automatically cached without any code changes!
+- 🎉 **Automatic Query Caching** - All queries automatically cached without code changes!
 - 🏷️ **Cache Tags Support** - Full support for Redis and Memcached tagged caching
 - 🔄 **Automatic Cache Invalidation** - Cache automatically clears on model create, update, delete
-- 📊 **Built-in Statistics** - Monitor cache hit rates and performance
-- 🎯 **Adaptive TTL** - Automatically adjusts cache duration based on access patterns
 - 🔧 **Flexible API** - Multiple ways to configure caching per query
 - 🌐 **Multi-Driver Support** - Works with Redis, Memcached, File, Database drivers
 - 🧪 **Fully Tested** - Comprehensive test coverage with PHPUnit and Pest
-- 📈 **Performance Monitoring** - Track and optimize cache performance
-- ⚡ **Async Cache Refresh** - Refresh cache in background jobs
 - 👤 **Auto User/Guest Tags** - Automatic user-specific cache isolation
 - 🚫 **doNotCache() Method** - Disable caching for specific queries (DataTables compatible)
+- 🎯 **Helper Functions** - Convenient global functions for cache operations
 
 ## 📋 Requirements
 
@@ -50,13 +47,13 @@ composer require predis/predis
 ```
 
 ```env
-CACHE_DRIVER=predis
+CACHE_DRIVER=redis
 REDIS_HOST=127.0.0.1
 REDIS_PASSWORD=null
 REDIS_PORT=6379
 ```
 
-#### Also update config\database.php
+#### Also update config/database.php
 
 ```php
 'redis' => [
@@ -66,7 +63,7 @@ REDIS_PORT=6379
 
 ## 🚀 Quick Start
 
-### 🎉 NEW: Automatic Query Caching (v0.2+)
+### 🎉 Automatic Query Caching
 
 With auto-cache enabled, ALL your queries are automatically cached without any code changes:
 
@@ -120,7 +117,7 @@ use Fxcjahid\LaravelEloquentCacheMagic\Traits\CacheableTrait;
 class Product extends Model
 {
     use CacheableTrait;
-  
+
     protected $cacheExpiry = 7200; // 2 hours
     protected $cacheTags = ['products'];
 }
@@ -128,7 +125,7 @@ class Product extends Model
 
 ## 🎯 Key Features Explained
 
-### 🎉 Automatic Query Caching (NEW!)
+### 🎉 Automatic Query Caching
 
 Enable automatic caching for ALL queries without changing your code:
 
@@ -178,10 +175,10 @@ Cache::tags(['products'])->flush();
 class Product extends Model
 {
     use CacheableTrait;
-  
+
     // Cache automatically clears when model is updated/deleted
     protected $cacheTags = ['products'];
-  
+
     // Dynamic tags based on attributes
     public function dynamicCacheTags(): array
     {
@@ -193,43 +190,66 @@ class Product extends Model
 }
 ```
 
-### Performance Monitoring
+### User/Guest Isolation
+
+Automatically isolate cache by user or guest session:
 
 ```php
-use Fxcjahid\LaravelEloquentCacheMagic\Facades\CacheMagic;
-
-// Get cache statistics
-$stats = CacheMagic::statistics()->getGlobalStats();
-// Returns: ['hit_rate' => '92.5%', 'hits' => 15420, ...]
-
-// Check cache health
-$health = CacheMagic::health()->check();
-// Returns: ['status' => 'healthy', 'checks' => [...]]
+// In config/cache-magic.php
+'auto_user_tags' => [
+    'enabled' => true,
+    'guest_fallback' => 'session', // Options: 'session', 'ip', 'unique'
+],
 ```
 
 ## 📊 Console Commands
 
 ```bash
-# Clear cache
+# Clear cache by tags
 php artisan cache-magic:clear --tags=products
 
-# View statistics
-php artisan cache-magic:stats
+# Clear cache by model
+php artisan cache-magic:clear --model=Product
 
-# Warm cache
-php artisan cache-magic:warm --model=Product
+# Clear all cache
+php artisan cache-magic:clear --all
+```
+
+## 🔧 Helper Functions
+
+```php
+// Cache a callback result
+$users = cache_remember(['ttl' => 3600, 'tags' => ['users']], function() {
+    return User::all();
+});
+
+// Clear cache by tags
+cache_clear_tags(['products', 'electronics']);
+
+// Clear cache by model
+cache_clear_model(Product::class);
+
+// Clear user-specific cache
+cache_clear_user($userId);
+
+// Clear guest cache
+cache_clear_guest($guestId);
+
+// Check if cache supports tags
+if (cache_supports_tags()) {
+    // Use tag-based caching
+}
 ```
 
 ## 📖 Complete Documentation
 
 **[Read the complete documentation](./DOCUMENTATION.md)** for comprehensive details on:
 
+- ✅ Installation and configuration
 - ✅ All query methods and parameters
 - ✅ Cache tags explained with examples
 - ✅ Model integration guide
 - ✅ Console commands usage
-- ✅ API middleware setup
-- ✅ Performance monitoring
 - ✅ Helper functions
 - ✅ Advanced features
 - ✅ Troubleshooting guide
